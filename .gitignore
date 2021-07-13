@@ -1,0 +1,13 @@
+Temp/
+Library/
+Saves/
+.vs/
+Assembly-CSharp-Editor-firstpass.csproj
+Assembly-CSharp-Editor.csproj
+Assembly-CSharp-firstpass.csproj
+obj/
+Assembly-CSharp.csproj
+Saves./
+Assets/_TerrainAutoUpgrade/
+Assets/_TerrainAutoUpgrade.meta
+MemoryCaptures/
