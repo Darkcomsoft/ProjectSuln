@@ -19,10 +19,11 @@ public class NetworkView : MonoBehaviour
     [NonSerialized]
     internal Dictionary<string, RPCALL> _methodlist = new Dictionary<string, RPCALL>();
 
-    public void SetUp(int viewid, SteamId ownerid)
+    public void SetUp(int viewid, int channel, SteamId ownerid)
     {
         v_viewID = viewid;
         v_ownerID = ownerid;
+        v_channel = channel;
 
         v_ready = true;
 

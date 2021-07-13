@@ -12,6 +12,7 @@ using System.Text;
 public class Network : MonoBehaviour
 {
     private bool v_isConnected = false;
+    private bool v_offlineMode = false;
 
     private int v_channel = 0;
 
@@ -114,37 +115,55 @@ public class Network : MonoBehaviour
             GameObject obj = Instantiate(gameobject, position, rotation);
             NetworkView netview = gameobject.GetComponent<NetworkView>();
 
-            NetMsgPacket msg = new NetMsgPacket();
-
             int viewid = Uyilitis.UniqueID(5);
-
             while (Game.Network.v_networkViewerDictionary.ContainsKey(viewid))
             {
                 viewid = Uyilitis.UniqueID(5);
             }
 
-            msg.Write((byte)DataType.Instantiate);
-            msg.Write(netview.v_prefabName);
-            msg.Write(viewid);
+            if (!Game.Network.v_offlineMode)//chekk if the client is in offlineMode
+            {
+                NetMsgPacket msg = new NetMsgPacket();
 
-            //Position
-            msg.Write(position.x);
-            msg.Write(position.y);
-            msg.Write(position.z);
+                msg.Write((byte)DataType.Instantiate);
+                msg.Write(netview.v_prefabName);
+                msg.Write(viewid);
 
-            //Rotation
-            msg.Write(rotation.x);
-            msg.Write(rotation.y);
-            msg.Write(rotation.z);
+                //Position
+                msg.Write(position.x);
+                msg.Write(position.y);
+                msg.Write(position.z);
 
-            netview.SetUp(viewid, SteamManager.v_steamID);
+                //Rotation
+                msg.Write(rotation.x);
+                msg.Write(rotation.y);
+                msg.Write(rotation.z);
 
-            Game.Network.SendToAll(msg.Serialize(), channel, P2PSend.Reliable);
+                Game.Network.SendToAll(msg.Serialize(), channel, P2PSend.Reliable);
+            }
 
+            netview.SetUp(viewid, channel,SteamManager.v_steamID);
             return obj;
         }
 
         return null;
+    }
+
+    public static void Destroy(GameObject obj)
+    {
+        NetworkView netview = obj.GetComponent<NetworkView>();
+
+        if (!Game.Network.v_offlineMode)//chekk if the client is in offlineMode
+        {
+            NetMsgPacket msg = new NetMsgPacket();
+
+            msg.Write((byte)DataType.Destroy);
+            msg.Write(netview.v_viewID);
+
+            Game.Network.SendToAll(msg.Serialize(), netview.v_channel, P2PSend.Reliable);
+        }
+
+        Destroy(obj);
     }
 
     public void SendToAll(byte[] data, int channel, P2PSend sendtype)
