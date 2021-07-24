@@ -41,16 +41,6 @@ public class GameManager : MonoBehaviour
         SceneManager.LoadSceneAsync("myworld");
     }
 
-    public void Diconnect()
-    {
-        if (!v_isplaying) { return; }
-
-        Network.Disconnect();
-        SceneManager.LoadSceneAsync("MainMenu");
-
-        DestroyAllObjects();
-    }
-
     private void OnLevelWasLoaded(int level)
     {
         if (level == 2)//start playing, the map is ready to player
@@ -72,10 +62,22 @@ public class GameManager : MonoBehaviour
         }
     }
 
-    public void SpawnPlayer()
+    #region StartGameWorld
+    public void StartGameWorld()
     {
-        
+
     }
+
+    public void Diconnect()
+    {
+        if (!v_isplaying) { return; }
+
+        Network.Disconnect();
+        
+
+        DestroyAllObjects();
+    }
+    #endregion
 }
 
 public static class Uyilitis

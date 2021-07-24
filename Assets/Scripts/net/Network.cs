@@ -13,14 +13,15 @@ public class Network : MonoBehaviour
 {
     private bool v_isConnected = false;
     private bool v_offlineMode = false;
-
+    public NetworkType v_networkType { get; private set; }
     private int v_channel = 0;
 
-    private Lobby v_currentLobby;
-
     private Dictionary<int, NetworkView> v_networkViewerDictionary;
-
+    private Dictionary<string, GameObject> v_networkPrefabDictionary;
     private List<SteamId> v_connectionList;
+
+    public Action OnConnected;
+    public Action OnDisconnected;
 
     private void Awake()
     {
@@ -31,6 +32,7 @@ public class Network : MonoBehaviour
     {
         Debug.Log("NETWORK : Net Starting!");
         v_networkViewerDictionary = new Dictionary<int, NetworkView>();
+        v_networkPrefabDictionary = new Dictionary<string, GameObject>();
         v_connectionList = new List<SteamId>();
         SetUpNetwork();
     }
@@ -41,19 +43,24 @@ public class Network : MonoBehaviour
         {
             if (SteamNetworking.IsP2PPacketAvailable(v_channel))
             {
-                SteamNetworking.ReadP2PPacket(v_channel);
+                switch (v_networkType)
+                {
+                    case NetworkType.Client:
+                        ReadClientData((P2Packet)SteamNetworking.ReadP2PPacket(v_channel));
+                        break;
+                    case NetworkType.Server:
+                        ReadServerData((P2Packet)SteamNetworking.ReadP2PPacket(v_channel));
+                        break;
+                }
             }
         }
     }
 
     private void OnDestroy()
     {
-        //v_currentLobby.Leave();
-
         SteamNetworking.AllowP2PPacketRelay(false);
         SteamNetworking.OnP2PSessionRequest -= OnP2PSessionRequest;
         SteamNetworking.OnP2PConnectionFailed -= OnP2PConnectionFailed;
-        SteamMatchmaking.OnLobbyCreated -= SteamMatchmaking_OnLobbyCreated;
 
         Disconnect();
         Game.Network = null;
@@ -64,41 +71,68 @@ public class Network : MonoBehaviour
         SteamNetworking.AllowP2PPacketRelay(true);
         SteamNetworking.OnP2PSessionRequest += OnP2PSessionRequest;
         SteamNetworking.OnP2PConnectionFailed += OnP2PConnectionFailed;
-        SteamMatchmaking.OnLobbyCreated += SteamMatchmaking_OnLobbyCreated;
     }
 
-    private void SteamMatchmaking_OnLobbyCreated(Result result, Lobby lobby)
+    public static void StartServer(bool offline)
     {
-        v_currentLobby = lobby;
+        Game.Network.v_offlineMode = offline;
 
-        lobby.SetPublic();
-        Debug.Log("OnLobbyCreated: " + result.ToString());
+        if (!offline)
+        {
+            Game.MatchMaking.CreateLobby();
+        }
+
+        Game.Network.v_isConnected = true;
+        Game.Network.v_networkType = NetworkType.Client;
+
+        Game.Network.OnConnected?.Invoke();
     }
 
-    private void OnP2PSessionRequest(SteamId userid)
+    public static void StartClient(bool offline, SteamId steamId)
     {
-        SteamNetworking.AcceptP2PSessionWithUser(userid);
-    }
+        Game.Network.v_offlineMode = offline;
 
-    private void OnP2PConnectionFailed(SteamId userid, P2PSessionError error)
-    {
-        SteamNetworking.CloseP2PSessionWithUser(userid);
-        Debug.LogError("SteamNetWorking: Connecting to user(" + userid.AccountId + ") Failed! errorcode: " + error.ToString());
-    }
+        if (!offline)
+        {
+            Game.MatchMaking.JoinLobby(steamId);
+        }
 
-    public static void CreateLobby()
-    {
-        SteamMatchmaking.CreateLobbyAsync(5);
-    }
+        Game.Network.v_isConnected = true;
+        Game.Network.v_networkType = NetworkType.Server;
 
-    public static void ConnectToLobby()
-    {
-        
+        Game.Network.OnConnected?.Invoke();
     }
 
     public static void Disconnect()
     {
+        foreach (var item in Game.Network.v_networkViewerDictionary)
+        {
+            if (item.Value.v_viewID != 0)
+            {
+                if (item.Value.isMine)
+                {
+                    Network.Destroy(item.Value.gameObject);
+                }
+            }
+        }
 
+        Game.Network.OnDisconnected?.Invoke();
+
+        foreach (var item in Game.Network.v_connectionList)
+        {
+            SteamNetworking.CloseP2PSessionWithUser(item);
+        }
+
+        Game.Network.v_connectionList.Clear();
+
+        if (!Game.Network.v_offlineMode)
+        {
+            Game.MatchMaking?.LeaveLobby();
+        }
+
+        Game.Network.v_isConnected = false;
+        Game.Network.v_offlineMode = false;
+        Game.Network.v_networkType = NetworkType.disconnected;
     }
 
     public static GameObject Instantiate(GameObject gameobject, int channel)
@@ -163,18 +197,18 @@ public class Network : MonoBehaviour
             Game.Network.SendToAll(msg.Serialize(), netview.v_channel, P2PSend.Reliable);
         }
 
-        Destroy(obj);
+        GameObject.Destroy(obj);
     }
 
     public void SendToAll(byte[] data, int channel, P2PSend sendtype)
     {
         for (int i = 0; i < v_connectionList.Count; i++)
         {
-            Send(v_connectionList[i], data, channel, sendtype);
+            SendToPeer(v_connectionList[i], data, channel, sendtype);
         }
     }
 
-    private void Send(SteamId steamid, byte[] data, int channel, P2PSend sendtype)
+    public void SendToPeer(SteamId steamid, byte[] data, int channel, P2PSend sendtype)
     {
         SteamNetworking.SendP2PPacket(steamid: steamid, data: data, nChannel: channel, sendType: sendtype);
     }
@@ -194,6 +228,128 @@ public class Network : MonoBehaviour
             Game.Network.v_networkViewerDictionary.Remove(networkView.v_viewID);
         }
     }
+
+    #region CallBacks
+    private void OnP2PSessionRequest(SteamId userid)
+    {
+        v_connectionList.Add(userid);
+        SteamNetworking.AcceptP2PSessionWithUser(userid);
+    }
+
+    private void OnP2PConnectionFailed(SteamId userid, P2PSessionError error)
+    {
+        if (v_connectionList.Contains(userid))
+        {
+            v_connectionList.Remove(userid);
+        }
+        SteamNetworking.CloseP2PSessionWithUser(userid);
+        Debug.LogError("SteamNetWorking: Connecting to user(" + userid.AccountId + ") Failed! errorcode: " + error.ToString());
+    }
+    #endregion
+
+    #region ReadData
+    private void ReadServerData(P2Packet packet)
+    {
+        NetMsgPacket msg = new NetMsgPacket();
+        msg.Deserialize(packet.Data);
+
+        DataType dataType = (DataType)msg.ReadByte();
+
+        switch (dataType)
+        {
+            case DataType.Instantiate:
+                string prefabName = msg.ReadString();
+
+                if (v_networkPrefabDictionary.TryGetValue(prefabName, out GameObject objt))
+                {
+                    int iviewid = msg.ReadInt();
+                    Vector3 pos = new Vector3();
+                    Quaternion rot = Quaternion.identity;
+
+                    pos.x = msg.ReadFloat();
+                    pos.y = msg.ReadFloat();
+                    pos.z = msg.ReadFloat();
+
+                    rot.x = msg.ReadFloat();
+                    rot.y = msg.ReadFloat();
+                    rot.z = msg.ReadFloat();
+
+                    GameObject obj = Instantiate(objt, pos, rot);
+                    NetworkView netview = obj.GetComponent<NetworkView>();
+
+                    netview.SetUp(iviewid, v_channel, packet.SteamId);
+                }
+                break;
+            case DataType.Destroy:
+                int dview = msg.ReadInt();
+
+                if (v_networkViewerDictionary.ContainsKey(dview))
+                {
+                    NetworkView netview = v_networkViewerDictionary[dview];
+
+                    if (netview.v_ownerID == packet.SteamId)
+                    {
+                        GameObject.Destroy(netview.gameObject);
+                    }
+                }
+                break;
+            default:
+                Debug.LogError("Some thing get wrong with receive data! DataSize: " + packet.Data.Length);
+                break;
+        }
+    }
+
+    private void ReadClientData(P2Packet packet)
+    {
+        NetMsgPacket msg = new NetMsgPacket();
+        msg.Deserialize(packet.Data);
+
+        DataType dataType = (DataType)msg.ReadByte();
+
+        switch (dataType)
+        {
+            case DataType.Instantiate:
+                string prefabName = msg.ReadString();
+
+                if (v_networkPrefabDictionary.TryGetValue(prefabName, out GameObject objt))
+                {
+                    int iviewid = msg.ReadInt();
+                    Vector3 pos = new Vector3();
+                    Quaternion rot = Quaternion.identity;
+
+                    pos.x = msg.ReadFloat();
+                    pos.y = msg.ReadFloat();
+                    pos.z = msg.ReadFloat();
+
+                    rot.x = msg.ReadFloat();
+                    rot.y = msg.ReadFloat();
+                    rot.z = msg.ReadFloat();
+
+                    GameObject obj = Instantiate(objt, pos, rot);
+                    NetworkView netview = obj.GetComponent<NetworkView>();
+
+                    netview.SetUp(iviewid, v_channel, packet.SteamId);
+                }
+                break;
+            case DataType.Destroy:
+                int dview = msg.ReadInt();
+
+                if (v_networkViewerDictionary.ContainsKey(dview))
+                {
+                    NetworkView netview = v_networkViewerDictionary[dview];
+
+                    if (netview.v_ownerID == packet.SteamId || Game.MatchMaking.v_currentLobby.Owner.Id == packet.SteamId)
+                    {
+                        GameObject.Destroy(netview.gameObject);
+                    }
+                }
+                break;
+            default:
+                Debug.LogError("Some thing get wrong with receive data! DataSize: " + packet.Data.Length);
+                break;
+        }
+    }
+    #endregion
 }
 
 [System.AttributeUsage(System.AttributeTargets.Method, AllowMultiple = true)]
@@ -403,6 +559,11 @@ public struct NetbufferSerializer
     {
         v_data.Remove(data);
     }
+}
+
+public enum NetworkType : byte
+{
+    disconnected, Client, Server
 }
 
 public enum DataType : byte

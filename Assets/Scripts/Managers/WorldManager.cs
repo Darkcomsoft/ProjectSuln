@@ -59,4 +59,9 @@ public class WorldManager : MonoBehaviour
     {
         v_worldList.Remove(world);
     }
+
+    public static void LoadMainMenu()
+    {
+
+    }
 }
