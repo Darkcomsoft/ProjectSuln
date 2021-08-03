@@ -12,7 +12,7 @@ using System.Text;
 public class Network : MonoBehaviour
 {
     private bool v_isConnected = false;
-    private bool v_offlineMode = false;
+    private bool v_offLineMode;
     public NetworkType v_networkType { get; private set; }
     private int v_channel = 0;
 
@@ -22,6 +22,8 @@ public class Network : MonoBehaviour
 
     public Action OnConnected;
     public Action OnDisconnected;
+
+    public bool v_offlineMode { get { if (v_networkType != NetworkType.disconnected && v_offLineMode) { return true; } return false; } set { v_offLineMode = value; } }
 
     private void Awake()
     {
@@ -58,9 +60,12 @@ public class Network : MonoBehaviour
 
     private void OnDestroy()
     {
-        SteamNetworking.AllowP2PPacketRelay(false);
-        SteamNetworking.OnP2PSessionRequest -= OnP2PSessionRequest;
-        SteamNetworking.OnP2PConnectionFailed -= OnP2PConnectionFailed;
+        if (!v_offlineMode)
+        {
+            SteamNetworking.AllowP2PPacketRelay(false);
+            SteamNetworking.OnP2PSessionRequest -= OnP2PSessionRequest;
+            SteamNetworking.OnP2PConnectionFailed -= OnP2PConnectionFailed;
+        }
 
         Disconnect();
         Game.Network = null;

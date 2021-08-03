@@ -77,7 +77,7 @@ namespace Q3Movement
         private void Update()
         {
             m_MoveInput = new Vector3(Input.GetAxisRaw("Horizontal"), 0, Input.GetAxisRaw("Vertical"));
-            m_MouseLook.UpdateCursorLock();    
+            
             QueueJump();
 
             // Set movement state.
@@ -98,17 +98,8 @@ namespace Q3Movement
             // Rotate the character and camera.
             m_MouseLook.LookRotation(m_Tran, m_CamTran);
 
-            // apply the impact force:
-            if (v_impact.magnitude > 0.2)
-            {
-                m_Character.Move(m_PlayerVelocity * Time.deltaTime);
-                m_Character.Move(v_impact * Time.deltaTime);
-            }
-            else
-            {
-                // Move the character.
-                m_Character.Move(m_PlayerVelocity * Time.deltaTime);
-            }
+            m_Character.Move((m_PlayerVelocity + v_impact / 2) * Time.deltaTime);
+
             // consumes the impact energy each cycle:
             v_impact = Vector3.Lerp(v_impact, Vector3.zero, 5 * Time.deltaTime);
         }

@@ -31,12 +31,7 @@ public class WorldManager : MonoBehaviour
 
     public void SpawnWorld(string worldName)
     {
-        SceneManager.LoadSceneAsync(worldName, LoadSceneMode.Additive);
-    }
-
-    public void DestroyWorld(string worldName)
-    {
-        SceneManager.LoadSceneAsync(worldName, LoadSceneMode.Additive);
+        SceneLoader.LoadScene(worldName, LoadSceneMode.Additive);
     }
 
     public void JoinWorld(World world)

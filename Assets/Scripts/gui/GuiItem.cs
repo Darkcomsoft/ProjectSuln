@@ -15,12 +15,12 @@ public class GuiItem : MonoBehaviour, IDragHandler, IDropHandler, IPointerEnterH
 
     public void Start()
     {
-        Game.GUIManager.Add(this);
+        Game.MenuManager.Add(this);
     }
 
     public void OnDestroy()
     {
-        Game.GUIManager.Remove(this);
+        Game.MenuManager.Remove(this);
     }
 
     public void OnClick()

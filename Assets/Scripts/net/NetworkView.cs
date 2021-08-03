@@ -11,10 +11,12 @@ public class NetworkView : MonoBehaviour
     public string v_prefabName;
 
     public SteamId v_ownerID { get; private set; }
-    public int v_viewID { get; private set; }
+    public int v_viewID;
     public bool v_ready { get; private set; }
 
     public int v_channel { get; private set; }
+
+    public ViewIdType v_viewIdType = ViewIdType.Auto;
 
     [NonSerialized]
     internal Dictionary<string, RPCALL> _methodlist = new Dictionary<string, RPCALL>();
@@ -130,4 +132,9 @@ public class NetworkView : MonoBehaviour
     /// Check if this netviewer is mine, equal to the corrent steamid user
     /// </summary>
     public bool isMine { get { if (v_ownerID.Equals(SteamManager.v_steamID)) { return true; } return false; } }
+}
+
+public enum ViewIdType : byte
+{
+    Auto, Manual
 }

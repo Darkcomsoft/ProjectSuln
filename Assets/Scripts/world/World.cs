@@ -51,4 +51,38 @@ public class World : MonoBehaviour
             v_entityList.Remove(entity);
         }
     }
+
+    public static void SpawnObject(GameObject gameObject, Vector2 position, string worldName)
+    {
+        GameObject obj = GameObject.Instantiate(gameObject, position, Quaternion.identity);
+        SceneManager.MoveGameObjectToScene(obj, SceneManager.GetSceneByName(worldName));
+    }
+
+    public static void SpawnObject(GameObject gameObject, Quaternion rotation, string worldName)
+    {
+        GameObject obj = GameObject.Instantiate(gameObject, Vector3.zero, rotation);
+        SceneManager.MoveGameObjectToScene(obj, SceneManager.GetSceneByName(worldName));
+    }
+
+    public static void SpawnObject(GameObject gameObject, string worldName)
+    {
+        GameObject obj = GameObject.Instantiate(gameObject, Vector3.zero, Quaternion.identity);
+        SceneManager.MoveGameObjectToScene(obj, SceneManager.GetSceneByName(worldName));
+    }
+
+    public static void SpawnObject(GameObject gameObject, Vector2 position, Quaternion rotation, string worldName)
+    {
+        GameObject obj = GameObject.Instantiate(gameObject, position, rotation);
+        SceneManager.MoveGameObjectToScene(obj, SceneManager.GetSceneByName(worldName));
+    }
+
+    public static void DestroyObject(GameObject gameObject)
+    {
+        GameObject.Destroy(gameObject);
+    }
+
+    public static void DestroyObject(GameObject gameObject, float time)
+    {
+        GameObject.Destroy(gameObject, time);
+    }
 }

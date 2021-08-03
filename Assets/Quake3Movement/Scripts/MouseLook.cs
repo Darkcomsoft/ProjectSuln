@@ -16,7 +16,6 @@ namespace Q3Movement
         [SerializeField] private float m_MaximumX = 90F;
         [SerializeField] private bool m_Smooth = false;
         [SerializeField] private float m_SmoothTime = 5f;
-        [SerializeField] private bool m_LockCursor = true;
 
         private Quaternion m_CharacterTargetRot;
         private Quaternion m_CameraTargetRot;
@@ -30,72 +29,31 @@ namespace Q3Movement
 
         public void LookRotation(Transform character, Transform camera)
         {
-            float yRot = Input.GetAxis("Mouse X") * m_XSensitivity;
-            float xRot = Input.GetAxis("Mouse Y") * m_YSensitivity;
-
-            m_CharacterTargetRot *= Quaternion.Euler(0f, yRot, 0f);
-            m_CameraTargetRot *= Quaternion.Euler(-xRot, 0f, 0f);
-
-            if (m_ClampVerticalRotation)
+            if (Game.v_mouseLocked)
             {
-                m_CameraTargetRot = ClampRotationAroundXAxis(m_CameraTargetRot);
-            }
+                float yRot = Input.GetAxis("Mouse X") * m_XSensitivity;
+                float xRot = Input.GetAxis("Mouse Y") * m_YSensitivity;
 
-            if (m_Smooth)
-            {
-                character.localRotation = Quaternion.Slerp(character.localRotation, m_CharacterTargetRot,
-                    m_SmoothTime * Time.deltaTime);
-                camera.localRotation = Quaternion.Slerp(camera.localRotation, m_CameraTargetRot,
-                    m_SmoothTime * Time.deltaTime);
-            }
-            else
-            {
-                character.localRotation = m_CharacterTargetRot;
-                camera.localRotation = m_CameraTargetRot;
-            }
+                m_CharacterTargetRot *= Quaternion.Euler(0f, yRot, 0f);
+                m_CameraTargetRot *= Quaternion.Euler(-xRot, 0f, 0f);
 
-            UpdateCursorLock();
-        }
+                if (m_ClampVerticalRotation)
+                {
+                    m_CameraTargetRot = ClampRotationAroundXAxis(m_CameraTargetRot);
+                }
 
-        public void SetCursorLock(bool value)
-        {
-            m_LockCursor = value;
-            if (!m_LockCursor)
-            {//we force unlock the cursor if the user disable the cursor locking helper
-                Cursor.lockState = CursorLockMode.None;
-                Cursor.visible = true;
-            }
-        }
-
-        public void UpdateCursorLock()
-        {
-            //if the user set "lockCursor" we check & properly lock the cursos
-            if (m_LockCursor)
-            {
-                InternalLockUpdate();
-            }
-        }
-
-        private void InternalLockUpdate()
-        {
-            if (Input.GetKeyUp(KeyCode.Escape))
-            {
-                m_cursorIsLocked = false;
-            }
-            else if (Input.GetMouseButtonUp(0))
-            {
-                m_cursorIsLocked = true;
-            }
-
-            if (m_cursorIsLocked)
-            {
-                Cursor.lockState = CursorLockMode.Locked;
-                Cursor.visible = false;
-            }
-            else if (!m_cursorIsLocked)
-            {
-                Cursor.lockState = CursorLockMode.None;
-                Cursor.visible = true;
+                if (m_Smooth)
+                {
+                    character.localRotation = Quaternion.Slerp(character.localRotation, m_CharacterTargetRot,
+                        m_SmoothTime * Time.deltaTime);
+                    camera.localRotation = Quaternion.Slerp(camera.localRotation, m_CameraTargetRot,
+                        m_SmoothTime * Time.deltaTime);
+                }
+                else
+                {
+                    character.localRotation = m_CharacterTargetRot;
+                    camera.localRotation = m_CameraTargetRot;
+                }
             }
         }
 

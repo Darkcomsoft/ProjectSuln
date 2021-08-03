@@ -10,7 +10,7 @@ GameObject:
   m_Component:
   - component: {fileID: 266914876027467437}
   - component: {fileID: 266914876027467436}
-  m_Layer: 0
+  m_Layer: 3
   m_Name: SteamManager
   m_TagString: NoDestroy
   m_Icon: {fileID: 0}
